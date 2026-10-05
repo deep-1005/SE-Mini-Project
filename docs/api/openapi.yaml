@@ -1,0 +1,100 @@
+openapi: 3.0.3
+info:
+  title: Online Bookstore API
+  version: 1.0.0-sprint1
+  description: >
+    Contract for the endpoints implemented in Sprint 1 (SAD section 4.3). Later endpoints are listed in
+    the SAD and are added here as they are built. Money is integer paise; errors use the envelope in SAD 4.4.
+servers:
+  - url: http://localhost:5000/api/v1
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer, bearerFormat: JWT }
+    refreshCookie: { type: apiKey, in: cookie, name: rt }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string, example: VALIDATION_FAILED }
+            message: { type: string }
+            requestId: { type: string }
+            details: { type: array, items: { type: object, properties: { field: { type: string }, issue: { type: string } } } }
+    User:
+      type: object
+      properties: { id: { type: string }, name: { type: string }, email: { type: string }, phone: { type: string }, role: { type: string, enum: [BUYER, SELLER, ADMIN] }, isVerified: { type: boolean } }
+    Address:
+      type: object
+      properties: { id: { type: string }, line1: { type: string }, line2: { type: string }, city: { type: string }, state: { type: string }, pincode: { type: string, pattern: '^[1-9][0-9]{5}$' }, isDefault: { type: boolean } }
+    BookCard:
+      type: object
+      properties: { id: { type: string }, title: { type: string }, author: { type: string }, isbn13: { type: string }, coverUrl: { type: string, nullable: true }, lowestPrice: { type: integer, description: paise }, avgRating: { type: number }, reviewCount: { type: integer } }
+    Tokens:
+      type: object
+      properties: { accessToken: { type: string }, expiresIn: { type: integer, example: 900 }, user: { $ref: '#/components/schemas/User' } }
+  responses:
+    Error: { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+paths:
+  /health:
+    get: { summary: Liveness and dependency status (NFR-02), responses: { '200': { description: ok }, '503': { description: database down } } }
+  /auth/register:
+    post:
+      summary: Register as BUYER or SELLER (FR-01)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [name, email, phone, password, role], properties: { name: { type: string }, email: { type: string }, phone: { type: string, pattern: '^[0-9]{10}$' }, password: { type: string, minLength: 8 }, role: { type: string, enum: [BUYER, SELLER] } } } } } }
+      responses: { '201': { description: PENDING_VERIFICATION }, '400': { $ref: '#/components/responses/Error' }, '409': { $ref: '#/components/responses/Error' } }
+  /auth/verify-otp:
+    post: { summary: Verify six-digit OTP (FR-02), responses: { '200': { description: verified }, '400': { $ref: '#/components/responses/Error' }, '410': { $ref: '#/components/responses/Error' }, '423': { $ref: '#/components/responses/Error' } } }
+  /auth/resend-otp:
+    post: { summary: Resend OTP (max 3 per hour), responses: { '202': { description: accepted }, '429': { $ref: '#/components/responses/Error' } } }
+  /auth/login:
+    post:
+      summary: Sign in (FR-03); sets HttpOnly refresh cookie
+      responses: { '200': { description: tokens, content: { application/json: { schema: { $ref: '#/components/schemas/Tokens' } } } }, '401': { $ref: '#/components/responses/Error' }, '403': { $ref: '#/components/responses/Error' }, '429': { $ref: '#/components/responses/Error' } }
+  /auth/refresh:
+    post: { summary: Rotate refresh token and issue a new access token, security: [{ refreshCookie: [] }], responses: { '200': { description: tokens }, '401': { $ref: '#/components/responses/Error' } } }
+  /auth/logout:
+    post: { summary: Revoke the refresh token, security: [{ refreshCookie: [] }], responses: { '204': { description: signed out } } }
+  /auth/forgot-password:
+    post: { summary: Send reset link (same response for unknown e-mails) (FR-04), responses: { '202': { description: accepted } } }
+  /auth/reset-password:
+    post: { summary: Set a new password with a single-use token, responses: { '200': { description: reset }, '400': { $ref: '#/components/responses/Error' } } }
+  /users/me:
+    get: { security: [{ bearer: [] }], summary: Current user, responses: { '200': { description: user }, '401': { $ref: '#/components/responses/Error' } } }
+    patch: { security: [{ bearer: [] }], summary: Update name or phone (FR-05), responses: { '200': { description: user }, '400': { $ref: '#/components/responses/Error' } } }
+  /users/me/addresses:
+    get: { security: [{ bearer: [] }], summary: List addresses (BUYER), responses: { '200': { description: list } } }
+    post: { security: [{ bearer: [] }], summary: Add address (BUYER), responses: { '201': { description: created }, '400': { $ref: '#/components/responses/Error' } } }
+  /users/me/addresses/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    patch: { security: [{ bearer: [] }], summary: Update address, responses: { '200': { description: updated }, '404': { $ref: '#/components/responses/Error' } } }
+    delete: { security: [{ bearer: [] }], summary: Delete address, responses: { '204': { description: deleted }, '409': { $ref: '#/components/responses/Error' } } }
+  /books:
+    get:
+      summary: Catalogue, search, filters and sort (FR-07 to FR-09)
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string }, description: slug or id }
+        - { name: minPrice, in: query, schema: { type: integer }, description: paise }
+        - { name: maxPrice, in: query, schema: { type: integer }, description: paise }
+        - { name: condition, in: query, schema: { type: string, enum: [NEW, LIKE_NEW, GOOD, ACCEPTABLE] } }
+        - { name: language, in: query, schema: { type: string } }
+        - { name: minRating, in: query, schema: { type: number, minimum: 1, maximum: 5 } }
+        - { name: sort, in: query, schema: { type: string, enum: [price_asc, price_desc, rating, newest] } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 50 } }
+      responses:
+        '200':
+          description: page of results (X-Cache header HIT or MISS)
+          content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/BookCard' } }, page: { type: integer }, limit: { type: integer }, total: { type: integer }, suggestion: { type: object, nullable: true } } } } }
+        '400': { $ref: '#/components/responses/Error' }
+  /books/{id}:
+    get: { summary: Book detail with every ACTIVE offer by price (FR-10), parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { description: book and offers }, '404': { $ref: '#/components/responses/Error' } } }
+  /books/{id}/related:
+    get: { summary: Up to six related titles (FR-12), parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { description: list } } }
+  /books/isbn/{isbn13}:
+    get: { security: [{ bearer: [] }], summary: ISBN lookup for listing creation (SELLER, ADMIN), parameters: [{ name: isbn13, in: path, required: true, schema: { type: string } }], responses: { '200': { description: book }, '400': { $ref: '#/components/responses/Error' }, '403': { $ref: '#/components/responses/Error' }, '404': { $ref: '#/components/responses/Error' } } }
+  /categories:
+    get: { summary: All categories, responses: { '200': { description: list } } }

@@ -1,0 +1,20 @@
+// Registers all seventeen collections of SRS v1.1 Appendix B.
+module.exports = {
+  User: require('./User'),
+  Address: require('./Address'),
+  Session: require('./Session'),
+  AuditLog: require('./AuditLog'),
+  Notification: require('./Notification'),
+  Category: require('./Category'),
+  Book: require('./Book'),
+  Listing: require('./Listing'),
+  Cart: require('./Cart'),
+  CartItem: require('./CartItem'),
+  Wishlist: require('./Wishlist'),
+  Coupon: require('./Coupon'),
+  Order: require('./Order'),
+  OrderItem: require('./OrderItem'),
+  Payment: require('./Payment'),
+  Shipment: require('./Shipment'),
+  Review: require('./Review'),
+};
