@@ -9,13 +9,13 @@ A multi-seller e-commerce platform for buying and selling books, built on the ME
 | G H Pramod | PES1UG24CS162 | Cart, checkout, payment and orders (FR-13 to FR-18) |
 | Hardhick M Gowda | PES1UG24CS179 | Seller operations, administration and reporting (FR-19 to FR-24) |
 
-## Documents (`docs/`)
+## Documents
 
 | Document | File |
 |---|---|
-| Software Requirements Specification v1.1 | `docs/SRS_Group2_Online_Bookstore_v1.1.docx` |
-| Software Architecture and Design Specification v1.0 | `docs/SAD_Group2_Online_Bookstore.docx` |
-| Software Test Plan v1.0 (with 42 test cases) | `docs/Test_Plan_Group2_Online_Bookstore.docx` |
+| Software Requirements Specification v1.1 | `SRS_Group2_Online_Bookstore_v1.1.docx` |
+| Software Architecture and Design Specification v1.0 | `SAD_Group2_Online_Bookstore.docx` |
+| Software Test Plan v1.0 (with 42 test cases) | `Test_Plan_Group2_Online_Bookstore.docx` |
 | API contract (Sprint 1 endpoints) | `docs/api/openapi.yaml` |
 | Sprint 1 plan and full backlog | `docs/sprints/SPRINT_1_PLAN.md`, `docs/sprints/product_backlog_jira.csv` |
 | Manual test cases | `docs/testing/manual-cases.md` |
